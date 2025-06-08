@@ -1,25 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Label } from "../../../components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Badge } from "../../../components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
+import { Dialog, Transition } from "@headlessui/react"
+import { Fragment } from "react"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../../../components/ui/alert-dialog"
-import { useToast } from "../../../hooks/use-toast"
-import { ArrowLeft, UserCheck, UserX, Clock, CheckCircle, XCircle, Mail, Calendar } from "lucide-react"
+  ArrowLeftIcon,
+  UserPlusIcon,
+  UserMinusIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  EnvelopeIcon,
+  CalendarIcon,
+} from "@heroicons/react/24/outline"
 import Link from "next/link"
 
 interface AccessRequest {
@@ -33,6 +26,73 @@ interface AccessRequest {
   processed_by_name: { name: string } | null
 }
 
+// Simple Button Component
+const Button = ({ children, onClick, disabled, variant = "primary", size = "md", className = "", ...props }) => {
+  const baseClasses =
+    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500",
+    destructive: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
+  }
+
+  const sizes = {
+    sm: "px-3 py-1.5 text-sm",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
+  }
+
+  return (
+    <button
+      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      onClick={onClick}
+      disabled={disabled}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Simple Card Component
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}>{children}</div>
+)
+
+const CardHeader = ({ children, className = "" }) => (
+  <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>{children}</div>
+)
+
+const CardContent = ({ children, className = "" }) => <div className={`px-6 py-4 ${className}`}>{children}</div>
+
+const CardTitle = ({ children, className = "" }) => (
+  <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>{children}</h3>
+)
+
+// Simple Badge Component
+const Badge = ({ children, className = "" }) => (
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
+    {children}
+  </span>
+)
+
+// Simple Input Component
+const Input = ({ className = "", ...props }) => (
+  <input
+    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${className}`}
+    {...props}
+  />
+)
+
+// Simple Label Component
+const Label = ({ children, htmlFor, className = "" }) => (
+  <label htmlFor={htmlFor} className={`block text-sm font-medium text-gray-700 ${className}`}>
+    {children}
+  </label>
+)
+
 export default function AccessRequestsPage() {
   const [requests, setRequests] = useState<AccessRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +100,14 @@ export default function AccessRequestsPage() {
   const [approvalPassword, setApprovalPassword] = useState("")
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
-  const { toast } = useToast()
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false)
+  const [selectedRejectId, setSelectedRejectId] = useState<number | null>(null)
+
+  // Simple toast function
+  const toast = ({ title, description, variant = "default" }) => {
+    // You can implement a simple toast or just use alert for now
+    alert(`${title}${description ? ": " + description : ""}`)
+  }
 
   useEffect(() => {
     fetchRequests()
@@ -88,6 +155,8 @@ export default function AccessRequestsPage() {
         setApprovalDialogOpen(false)
         setApprovalPassword("")
         setSelectedRequestId(null)
+        setAlertDialogOpen(false)
+        setSelectedRejectId(null)
       } else {
         const error = await response.json()
         toast({ title: "Error processing request", description: error.error, variant: "destructive" })
@@ -104,9 +173,20 @@ export default function AccessRequestsPage() {
     setApprovalDialogOpen(true)
   }
 
+  const handleReject = (requestId: number) => {
+    setSelectedRejectId(requestId)
+    setAlertDialogOpen(true)
+  }
+
   const confirmApproval = () => {
     if (selectedRequestId && approvalPassword.trim()) {
       processRequest(selectedRequestId, "approve", approvalPassword)
+    }
+  }
+
+  const confirmReject = () => {
+    if (selectedRejectId) {
+      processRequest(selectedRejectId, "reject")
     }
   }
 
@@ -126,18 +206,17 @@ export default function AccessRequestsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
-        return <Clock className="w-4 h-4" />
+        return <ClockIcon className="w-4 h-4" />
       case "approved":
-        return <CheckCircle className="w-4 h-4" />
+        return <CheckCircleIcon className="w-4 h-4" />
       case "rejected":
-        return <XCircle className="w-4 h-4" />
+        return <XCircleIcon className="w-4 h-4" />
       default:
-        return <Clock className="w-4 h-4" />
+        return <ClockIcon className="w-4 h-4" />
     }
   }
 
   const pendingRequests = requests.filter((r) => r.status === "pending")
-  const processedRequests = requests.filter((r) => r.status !== "pending")
 
   if (loading) {
     return (
@@ -157,7 +236,7 @@ export default function AccessRequestsPage() {
       <div className="flex items-center gap-4 mb-8">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeftIcon className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
         </Link>
@@ -172,7 +251,7 @@ export default function AccessRequestsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <ClockIcon className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{pendingRequests.length}</div>
@@ -181,7 +260,7 @@ export default function AccessRequestsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Approved</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CheckCircleIcon className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -192,7 +271,7 @@ export default function AccessRequestsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
+            <XCircleIcon className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
@@ -207,10 +286,10 @@ export default function AccessRequestsPage() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-yellow-600" />
+              <ClockIcon className="w-5 h-5 text-yellow-600" />
               Pending Requests ({pendingRequests.length})
             </CardTitle>
-            <CardDescription>Requests awaiting your review</CardDescription>
+            <p className="text-sm text-gray-600">Requests awaiting your review</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -219,7 +298,7 @@ export default function AccessRequestsPage() {
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <Mail className="w-4 h-4 text-gray-500" />
+                        <EnvelopeIcon className="w-4 h-4 text-gray-500" />
                         <h3 className="text-lg font-semibold">{request.name}</h3>
                         <Badge className={getStatusColor(request.status)}>
                           {getStatusIcon(request.status)}
@@ -233,7 +312,7 @@ export default function AccessRequestsPage() {
                         </p>
                       )}
                       <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Calendar className="w-4 h-4" />
+                        <CalendarIcon className="w-4 h-4" />
                         <span>Requested: {new Date(request.created_at).toLocaleString()}</span>
                       </div>
                     </div>
@@ -243,35 +322,18 @@ export default function AccessRequestsPage() {
                         disabled={processingId === request.id}
                         size="sm"
                       >
-                        <UserCheck className="w-4 h-4 mr-1" />
+                        <UserPlusIcon className="w-4 h-4 mr-1" />
                         Approve
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" disabled={processingId === request.id} size="sm">
-                            <UserX className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Reject Access Request</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to reject the access request from {request.name}? They will be
-                              notified via email.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => processRequest(request.id, "reject")}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Reject Request
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReject(request.id)}
+                        disabled={processingId === request.id}
+                        size="sm"
+                      >
+                        <UserMinusIcon className="w-4 h-4 mr-1" />
+                        Reject
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -281,11 +343,11 @@ export default function AccessRequestsPage() {
         </Card>
       )}
 
-      {/* Processed Requests */}
+      {/* All Requests */}
       <Card>
         <CardHeader>
           <CardTitle>All Requests</CardTitle>
-          <CardDescription>Complete history of access requests</CardDescription>
+          <p className="text-sm text-gray-600">Complete history of access requests</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -294,7 +356,7 @@ export default function AccessRequestsPage() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <Mail className="w-4 h-4 text-gray-500" />
+                      <EnvelopeIcon className="w-4 h-4 text-gray-500" />
                       <h3 className="text-lg font-semibold">{request.name}</h3>
                       <Badge className={getStatusColor(request.status)}>
                         {getStatusIcon(request.status)}
@@ -309,12 +371,12 @@ export default function AccessRequestsPage() {
                     )}
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
+                        <CalendarIcon className="w-4 h-4" />
                         <span>Requested: {new Date(request.created_at).toLocaleString()}</span>
                       </div>
                       {request.processed_at && (
                         <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
+                          <CalendarIcon className="w-4 h-4" />
                           <span>Processed: {new Date(request.processed_at).toLocaleString()}</span>
                         </div>
                       )}
@@ -331,37 +393,123 @@ export default function AccessRequestsPage() {
       </Card>
 
       {/* Approval Dialog */}
-      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Approve Access Request</DialogTitle>
-            <DialogDescription>
-              Set a temporary password for the new user. They should change this after their first login.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Temporary Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={approvalPassword}
-                onChange={(e) => setApprovalPassword(e.target.value)}
-                placeholder="Enter a temporary password"
-              />
-              <p className="text-sm text-gray-500">The user will receive an email notification about their approval.</p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={confirmApproval} disabled={!approvalPassword.trim() || processingId !== null}>
-                {processingId ? "Processing..." : "Approve & Create Account"}
-              </Button>
+      <Transition appear show={approvalDialogOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={() => setApprovalDialogOpen(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                    Approve Access Request
+                  </Dialog.Title>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Set a temporary password for the new user. They should change this after their first login.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <Label htmlFor="password">Temporary Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={approvalPassword}
+                        onChange={(e) => setApprovalPassword(e.target.value)}
+                        placeholder="Enter a temporary password"
+                        className="mt-1"
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        The user will receive an email notification about their approval.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={confirmApproval} disabled={!approvalPassword.trim() || processingId !== null}>
+                      {processingId ? "Processing..." : "Approve & Create Account"}
+                    </Button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </Dialog>
+      </Transition>
+
+      {/* Reject Confirmation Dialog */}
+      <Transition appear show={alertDialogOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={() => setAlertDialogOpen(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                    Reject Access Request
+                  </Dialog.Title>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to reject this access request? The user will be notified via email.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setAlertDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={confirmReject}>
+                      Reject Request
+                    </Button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   )
 }
