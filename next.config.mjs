@@ -1,14 +1,24 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Add the alias configuration
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname),
+    };
+    
+    return config;
   },
-  typescript: {
-    ignoreBuildErrors: true,
+  // Add this to help with module resolution
+  experimental: {
+    esmExternals: 'loose',
   },
-  images: {
-    unoptimized: true,
-  },
-}
+};
 
-export default nextConfig
+export default nextConfig;
